@@ -22,9 +22,17 @@ class Value {
       return Value(sum, {this, &other}, {1.0, 1.0});
     }
 
+    Value operator- (Value other) {
+      return *this + other.neg();
+    }
+
     Value operator* (Value other) {
       float prod = this-> data * other.data;
       return Value(prod, {this, &other}, {other.data, this->data});
+    }
+
+    Value operator/ (Value other) {
+      return *this * other.pow(-1.0f);
     }
 
     Value pow(float exp) {
@@ -78,6 +86,12 @@ int main() {
 
   auto v7 = v1.neg();
   std::cout << v7.data << std::endl;
+
+  auto v8 = v2 / v1;
+  std::cout << v8.data << std::endl;
+
+  auto v9 = v2 - v1;
+  std::cout << v9.data << std::endl;
 
   return 0;
 }
