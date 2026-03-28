@@ -1,6 +1,8 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include <unordered_set>
+#include <algorithm>
 
 class Value {
   private:
@@ -58,10 +60,40 @@ class Value {
       return *this * Value(-1.0f);
     }
 
-    std::vector<Value*> get_children() {
+    std::vector<Value*> get_children() const {
       return this->children;
     }
+
+    std::vector<float> get_local_grads() const {
+      return this->local_grads;
+    }
+
+    void backward() {
+      std::vector<Value> topo = {};
+      std::unordered_set<Value*> visited = {};
+      void build_topo(Value v, std::vector<Value> t, std::unordered_set<Value*> vis);
+      build_topo(*this, topo, visited);
+      this->grad = 1.0f;
+      std::reverse(topo.begin(), topo.end());
+      for (const Value v : topo) {
+        auto children = v.get_children();
+        auto lgs = v.get_local_grads();
+        for (int i = 0; i < children.size(); i++) {
+          children[i]->grad += lgs[i] * v.grad;
+        }
+      }
+    }
 };
+
+void build_topo(Value v, std::vector<Value> topo, std::unordered_set<Value*> visited) {
+  if (visited.find(&v) == visited.end()) {
+    visited.insert(&v);
+    for (const Value* child : v.get_children()) {
+      return build_topo(*child, topo, visited);
+    }
+    topo.push_back(v);
+  }
+}
 
 int main() {
   Value v1 = {10};
