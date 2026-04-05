@@ -39,6 +39,7 @@ std::unordered_map<char, int> tokenize(std::vector<std::string> v) {
   return um;
 } 
 
+/*
 int main() {
   auto data = read_dataset("input.txt");
   std::cout << data.size() << " " << data[0] << std::endl;
@@ -48,3 +49,4 @@ int main() {
 
   return 0;
 }
+*/
