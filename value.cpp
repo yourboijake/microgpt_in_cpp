@@ -14,7 +14,9 @@ Value::Value(float dt, std::vector<std::shared_ptr<Value>> chn, std::vector<floa
 
 std::shared_ptr<Value> Value::add (std::shared_ptr<Value> a, std::shared_ptr<Value> b) {
   float sum = a->data + b->data;
-  auto out = std::make_shared<Value>(sum, {a, b}, {1.0, 1.0});
+  auto chn = {a, b};
+  auto lgs = {1.0, 1.0};
+  auto out = std::make_shared<Value>(sum, chn, lgs);
   return out;
 }
 
@@ -25,41 +27,56 @@ std::shared_ptr<Value> Value::sub(std::shared_ptr<Value> a, std::shared_ptr<Valu
 
 std::shared_ptr<Value> Value::mult(std::shared_ptr<Value> a, std::shared_ptr<Value> b) {
   float prod = a->data * b->data;
-  auto out = std::make_shared<Value>(prod, {a, b}, {b->data, a->data});
+  auto chn = {a, b};
+  auto lgs = {b->data, a->data};
+  auto out = std::make_shared<Value>(prod, chn, lgs);
   return out;
 }
 
 std::shared_ptr<Value> Value::div(std::shared_ptr<Value> a, std::shared_ptr<Value> b) {
-  auto inv = b.pow(-1.0f);
+  auto inv = Value::pow(b, -1.0f);
   return Value::mult(a, inv);
 }
 
 std::shared_ptr<Value> Value::pow(std::shared_ptr<Value> v, float exp) {
-  auto out = Value(std::pow(v->data, exp), {v}, {exp * std::pow(v->data, exp - 1.0f)});
+  float data = std::pow(v->data, exp);
+  float deriv = exp * std::pow(v->data, exp - 1.0f);
+  auto chn = {v};
+  auto lgs = {deriv};
+  auto out = std::make_shared<Value>(data, chn, lgs);
   return out;
 }
 
 std::shared_ptr<Value> Value::log(std::shared_ptr<Value> v) {
-  auto out = std::make_shared<Value>(std::log(v->data), {v}, {1/v->data});
+  float data = std::log(v->data);
+  auto chn = {v};
+  auto lgs = {1/v->data};
+  auto out = std::make_shared<Value>(data, chn, lgs);
   return out;
 }
 
 std::shared_ptr<Value> Value::exp(std::shared_ptr<Value> v) {
   float e = std::exp(v->data);
-  auto out = std::make_shared<Value>(e, {v}, {e});
+  auto chn = {v};
+  auto lgs = {e};
+  auto out = std::make_shared<Value>(e, chn, lgs);
   return out;
 }
 
 std::shared_ptr<Value> Value::relu(std::shared_ptr<Value> v) {
   float d = v->data > 0.0f ? v->data : 0.0f;
   float deriv = v->data > 0.0f ? 1.0f : 0.0f;
-  auto out = make_shared<Value>(d, {v}, {deriv});
+  auto chn = {v};
+  auto lgs = {deriv};
+  auto out = std::make_shared<Value>(d, chn, lgs);
   return out;
 }
 
 std::shared_ptr<Value> Value::neg(std::shared_ptr<Value> v) {
-  auto v = Value(-1.0f);
-  auto out = std::make_shared<Value>(v->data * -1.0f, {v}, {-1.0f});
+  float data = v->data * -1.0f;
+  auto chn = {v};
+  auto lgs = {-1.0f};
+  auto out = std::make_shared<Value>(data, chn, lgs);
   return out;
 }
 
@@ -72,25 +89,25 @@ std::vector<float> Value::get_local_grads() const {
 }
 
 void Value::backward(std::shared_ptr<Value> root) {
-  std::vector<Value> topo = {};
+  std::vector<std::shared_ptr<Value>> topo = {};
   std::unordered_set<std::shared_ptr<Value>> visited = {};
-  void build_topo(std::shared_ptr<Value> v, std::vector<Value> t, std::unordered_set<std::shared_ptr<Value>> vis);
+  void build_topo(std::shared_ptr<Value> v, std::vector<std::shared_ptr<Value>> t, std::unordered_set<std::shared_ptr<Value>> vis);
   build_topo(root, topo, visited);
   root->grad = 1.0f;
   std::reverse(topo.begin(), topo.end());
-  for (const Value& v : topo) {
-    auto children = v.get_children();
-    auto lgs = v.get_local_grads();
+  for (std::shared_ptr<Value> v: topo) {
+    auto children = v->get_children();
+    auto lgs = v->get_local_grads();
     for (int i = 0; i < children.size(); i++) {
-      children[i]->grad += lgs[i] * v.grad;
+      children[i]->grad += lgs[i] * v->grad;
     }
   }
 }
 
-void build_topo(std::shared_ptr<Value> v, std::vector<Value> topo, std::unordered_set<std::shared_ptr<Value>> visited) {
+void build_topo(std::shared_ptr<Value> v, std::vector<std::shared_ptr<Value>> topo, std::unordered_set<std::shared_ptr<Value>> visited) {
   if (visited.find(v) == visited.end()) {
     visited.insert(v);
-    for (const std::shared_ptr<Value> child : v.get_children()) {
+    for (const std::shared_ptr<Value> child : v->get_children()) {
       return build_topo(child, topo, visited);
     }
     topo.push_back(v);
